@@ -5,8 +5,8 @@ Statistics and figures that test the robustness of the results. Run from src/ana
     python robustness.py [EXPERIMENTS_DIR] [OUT_DIR]
 
   Stationarity             Stationary share of driver time in the first and last 2000
-                           steps of the long runs (E3, E4)
-  Market runovers          E4: runovers per road cell in the market area / elsewhere
+                           steps of the long runs (E4, E5)
+  Market runovers          E5: runovers per road cell in the market area / elsewhere
   sensitivity.png          E6: indicators with the risk values of Tables 2 and 4, with
                            log-uniform perturbations of every nonzero value, and with a
                            perception-reaction time of 0.6 s and 1.8 s instead of 1.2 s
@@ -30,7 +30,7 @@ PlotStyle.apply()
 
 WINDOW = 250
 VARIANTS = ['base', 'pert', 'tau2', 'tau6']        # E6 variants, reference first
-# Street-market area of E4 (as in replication_stats.py)
+# Street-market area of E5 (as in replication_stats.py)
 in_market = lambda x, y: 14 <= x <= 46 and 26 <= y <= 33
 
 
@@ -58,7 +58,7 @@ def paired(diff, label):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Intersection standstills over time (E3, E4)
+# Intersection standstills over time (E4, E5)
 # ──────────────────────────────────────────────────────────────────────────────
 def stationary_series(d):
     m = load(d, 'metrics.txt')
@@ -71,9 +71,9 @@ def stationary_series(d):
 
 
 def standstills():
-    series = {'E3, 20 drivers': glob.glob(f'{BASE}/exp_interaction_seed_*/obstacles_10_nw_200_nd_020'),
-              'E3, 100 drivers': glob.glob(f'{BASE}/exp_interaction_seed_*/obstacles_10_nw_200_nd_100'),
-              'E4, street market': glob.glob(f'{BASE}/exp_usecase_seed_*/*')}
+    series = {'E4, 20 drivers': glob.glob(f'{BASE}/exp_interaction_seed_*/obstacles_10_nw_200_nd_020'),
+              'E4, 100 drivers': glob.glob(f'{BASE}/exp_interaction_seed_*/obstacles_10_nw_200_nd_100'),
+              'E5, street market': glob.glob(f'{BASE}/exp_usecase_seed_*/*')}
     print('\n── Stationary share of driver time: first and last 2000 steps ──')
     for label, dirs in series.items():
         runs = [stationary_series(d) for d in sorted(dirs) if os.path.isfile(d + '/metrics.txt')]
@@ -90,10 +90,10 @@ def standstills():
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# E4: runovers around the street market
+# E5: runovers around the street market
 # ──────────────────────────────────────────────────────────────────────────────
 def market_runovers():
-    print('\n── E4: runovers and collisions per road cell, market area / elsewhere ──')
+    print('\n── E5: runovers and collisions per road cell, market area / elsewhere ──')
     if not glob.glob(f'{BASE}/exp_usecase_seed_*/*/metrics.txt'):
         return
     for horizon in (2000, 10000):

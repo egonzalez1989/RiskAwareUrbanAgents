@@ -200,6 +200,36 @@ def walker_obstacles(beta=lambda: 1, seed=0, overwrite=False, exp_name=None):
                  job_names, overwrite=overwrite)
 
 
+ROAD_RISKS = (1, 2, 3, 4, 5, 6, 8, 10)      # road risk of walkers (choice of the value)
+ROAD_RISK_OBSTRUCTION = (0, 5, 10)            # % of sidewalk cells obstructed
+
+
+def walker_road_risk(road_risk, seed=0, overwrite=False):
+    """Pedestrians only, as E1 with beta = rho = 1, for one road risk value of
+    walkers (intersection risk stays 10) and the obstruction levels of
+    ROAD_RISK_OBSTRUCTION. The obstacle layouts are those of E1 for the seed."""
+    parameters = {
+        'seed':                  seed,
+        'debug':                 False,
+        'random_weight_walker':  lambda: 1,
+        'random_rho_walker':     lambda: 1,
+        'initial_walker_count':  500,
+        'walker_spawn_function': lambda: 0,
+        'display':               False,
+        'steps':                 2000,
+        'risk_override':         {'walk': {'r': road_risk}},
+    }
+    random.seed(seed)
+    city_grid = gen_city(block_shape=(15, 15), city_shape=(5, 5),
+                         street_parking=False, crop=0)
+    parameters['city_grid'] = city_grid
+    parameters['potholes']  = []
+    layouts = {i: gen_obstacles(city_grid, obstacles=.01 * i)[0] for i in OBSTRUCTION_LEVELS}
+    exp_dir = OUT_ROOT + '/exp_road_risk_seed_{}/r_{}/'.format(seed, road_risk)
+    execute_jobs(exp_dir, parameters, ('obstacles', [layouts[i] for i in ROAD_RISK_OBSTRUCTION]),
+                 ['obstacles_{}'.format(i) for i in ROAD_RISK_OBSTRUCTION], overwrite=overwrite)
+
+
 def driver_walker_interaction(beta_walker=lambda: 1, beta_driver=lambda: 1,
                               walker_generator=lambda: 0,
                               driver_generator=lambda: 0,

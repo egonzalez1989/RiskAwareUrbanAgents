@@ -24,6 +24,7 @@ Figures (one per paper panel, named after the files in Documentation/images):
   wrongway_*_heatmap.png, ...  and wrong-way cells (rho > 0); lc_* for the
                                lane-closure grid (exp_lane_closures_seed_S)
   lc_wrongway_vs_rho.png       Wrong-way cells vs rho with and without closures
+  prer_road_risk.png           PRER vs road risk of walkers (choice of the value)
   uc_heatmap_*.png             Use-case spatial maps: walker and driver counts,
                                mean driver speed and jaywalking (exp_usecase_seed_S)
 """
@@ -328,6 +329,44 @@ def analyse_obstacle_sweeps(groups):
                        vmax=np.percentile(nz, 99) if nz.size else None)
 
 
+def analyse_road_risk(base_dir=None, seeds=None):
+    """Choice of the road risk of walkers (jobs R_<risk>): PRER against the road
+    risk for beta = rho = 1, one line per sidewalk obstruction level; lines are
+    means over seeds and bands span the seeds."""
+    base_dir = base_dir or BASE_DIR
+    runs = defaultdict(lambda: defaultdict(dict))     # level -> seed -> {risk: prer}
+    for mfile in glob.glob(os.path.join(base_dir, 'exp_road_risk_seed_*', 'r_*', 'obstacles_*', 'metrics.txt')):
+        job_dir = os.path.dirname(mfile)
+        seed = int(re.search(r'exp_road_risk_seed_(\d+)', job_dir).group(1))
+        if seeds is not None and seed not in seeds:
+            continue
+        risk = num(re.search(r'r_([\dp.]+)', job_dir).group(1))
+        level = int(re.search(r'obstacles_(\d+)', job_dir).group(1))
+        job = load_job(job_dir)
+        if job:
+            runs[level][seed][risk] = job['prer']
+    if not runs:
+        return
+    fig, ax = plt.subplots(constrained_layout=True, figsize=(PlotStyle.COLUMN_W, 2.4))
+    levels = sorted(runs)
+    for level, c, ls in zip(levels, PlotStyle.ordinal_colors(len(levels), 'viridis', .15, .75), ['-', '--', '-.']):
+        complete = [r for r in runs[level].values() if len(r) == max(len(v) for v in runs[level].values())]
+        risks = sorted(complete[0])
+        mean_band(ax, risks, [[r[k] for k in risks] for r in complete], c, f'{level}%', ls=ls)
+    ax.axvline(5, color='gray', lw=.8, ls=':')
+    ax.set_xlabel('Road risk of walkers')
+    ax.set_ylabel('PRER')
+    ax.set_ylim(bottom=0)
+    ax.grid(axis='x', visible=False)
+    ax.legend(title='Sidewalk obstruction', fontsize=7, title_fontsize=7)
+    PlotStyle.save(fig, out('prer_road_risk.png'))
+    for level in levels:
+        complete = list(runs[level].values())
+        risks = sorted(complete[0])
+        print(f'  road risk, obstruction {level}%: n={len(complete)} ' +
+              ' '.join(f'r{k}={np.mean([r[k] for r in complete if k in r]):.3f}' for k in risks))
+
+
 def analyse_interaction(groups):
     """Interaction sweeps (exp_interaction_seed_S, jobs obstacles_O_nw_W_nd_D):
     driver speed, collisions per driver and runovers per walker vs number of
@@ -434,7 +473,7 @@ def analyse_lane_closures(groups):
     # Wrong-way cells per 100 vs rho > 0 (at rho = 0 about half of all cells
     # are wrong-way and would hide the rest): one color per beta, closures
     # solid and the same configuration without closures dashed; error bars
-    # span the seeds
+    # span the seeds. Thin lines and offsets keep the six series apart
     rhos_pos = [r for r in rhos if r > 0]
     fig, axes = plt.subplots(1, 2, constrained_layout=True,
                              figsize=(PlotStyle.TEXT_W * .85, 2.5))
@@ -448,16 +487,17 @@ def analyse_lane_closures(groups):
         hi = np.array([max(v) - mean[i] if v else np.nan for i, v in enumerate(vals)])
         return mean, [lo, hi]
 
+    style = dict(lw=.9, ms=3, capsize=1.5, elinewidth=.6, capthick=.6)
     for ax, (key, title) in zip(axes, [('ww_planned', 'Planned routes'),
                                        ('ww_executed', 'Driven cells')]):
         for k, (b, c) in enumerate(zip(betas, colors)):
-            off = (k - (len(betas) - 1) / 2) * .06
+            off = (k - (len(betas) - 1) / 2) * .1
             m, err = series(lc, b, key)
-            ax.errorbar(xs + off, m, yerr=err, color=c, marker='o', capsize=2,
+            ax.errorbar(xs + off - .02, m, yerr=err, color=c, marker='o', **style,
                         label=rf'$\beta = {b}$, closures')
             m, err = series(base, b, key)
-            ax.errorbar(xs + off, m, yerr=err, color=c, marker='o', ls='--', mfc='white',
-                        capsize=2, label=rf'$\beta = {b}$, no closures')
+            ax.errorbar(xs + off + .02, m, yerr=err, color=c, marker='o', ls='--', mfc='white',
+                        **style, label=rf'$\beta = {b}$, no closures')
         ax.set_xticks(list(xs), [str(r) for r in rhos_pos])
         ax.set_title(title, loc='left')
         ax.set_ylim(bottom=0)
@@ -641,6 +681,7 @@ def main():
     analyse_interaction(groups)
     analyse_beta_rho_grid(groups)
     analyse_lane_closures(groups)
+    analyse_road_risk()
     analyse_usecase(groups)
 
     print_key_findings(groups)

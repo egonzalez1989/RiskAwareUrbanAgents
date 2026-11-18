@@ -1,14 +1,14 @@
 """
 replication_stats.py
-Run-level statistics over seeds for the long-run experiments E3 (traffic load,
-exp_interaction_seed_S) and E4 (street market, exp_usecase_seed_S).
+Run-level statistics over seeds for the long-run experiments E4 (traffic load,
+exp_interaction_seed_S) and E5 (street market, exp_usecase_seed_S).
 
 For each indicator and time window (whole run, and its first and last 2000
 steps, which show whether the indicators are stationary) it prints the mean over seeds, the standard deviation and a 95%
-confidence interval (Student t). For E3, whose two configurations share every
+confidence interval (Student t). For E4, whose two configurations share every
 seed (same obstacle layout), it also reports the within-seed difference
 heavy - light traffic with its 95% interval and a Wilcoxon signed-rank test.
-For E4 it adds the market-area indicators.
+For E5 it adds the market-area indicators.
 
 Usage (from src/analysis):  python replication_stats.py [experiments_dir]
 """
@@ -19,7 +19,7 @@ from scipy import stats
 
 E = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'Experiments')
 WINDOW = 2000
-# Street-market area of E4 (rows 14-46, columns 26-33): the stalls and the streets around them
+# Street-market area of E5 (rows 14-46, columns 26-33): the stalls and the streets around them
 in_market = lambda x, y: 14 <= x <= 46 and 26 <= y <= 33
 
 
@@ -53,7 +53,7 @@ def window(m, a, did, lo, hi):
 
 
 def market(m, a, did, p, d):
-    """E4 market-area indicators of one run."""
+    """E5 market-area indicators of one run."""
     g = np.array([[c[0] for c in row] for row in p['city_grid']])
     roadlike = np.isin(g, list('rtz'))
     nm = np.array([[in_market(i, j) for j in range(g.shape[1])] for i in range(g.shape[0])])
@@ -116,19 +116,19 @@ def main():
         seed = int(re.search(r'seed_(\d+)', d).group(1))
         m = json.load(open(d + 'metrics.txt')); a = json.load(open(d + 'agents.txt'))
         did = {k for k, v in a.items() if v['type'] == 'AstarDriver'}
-        exp = 'E4' if 'usecase' in d else 'E3'
+        exp = 'E5' if 'usecase' in d else 'E4'
         job = os.path.basename(d.rstrip('/'))
         T = len(m)
         for lo, hi, tag in ((0, T, 'whole run'), (0, WINDOW, 'first 2000 steps'), (T - WINDOW, T, 'last 2000 steps')):
             runs[(exp, job, tag)][seed] = window(m, a, did, lo, hi)
-        if exp == 'E4':
+        if exp == 'E5':
             runs[(exp, job, 'market area')][seed] = market(m, a, did, json.load(open(d + 'parameters.txt')), d)
     for key in sorted(runs):
         show(' / '.join(key), runs[key])
     for tag in ('first 2000 steps', 'whole run', 'last 2000 steps'):
-        light = runs.get(('E3', 'obstacles_10_nw_200_nd_020', tag)); heavy = runs.get(('E3', 'obstacles_10_nw_200_nd_100', tag))
+        light = runs.get(('E4', 'obstacles_10_nw_200_nd_020', tag)); heavy = runs.get(('E4', 'obstacles_10_nw_200_nd_100', tag))
         if light and heavy:
-            show_diff(f'E3 / 100 - 20 drivers / {tag}', light, heavy)
+            show_diff(f'E4 / 100 - 20 drivers / {tag}', light, heavy)
 
 
 if __name__ == '__main__':
